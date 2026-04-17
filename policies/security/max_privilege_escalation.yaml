@@ -1,0 +1,17 @@
+id: "POL-009"
+name: "No privileged containers"
+category: "security"
+severity: "CRITICAL"
+mode: "enforce"
+description: "Containers must not run in privileged mode, which grants access to all host devices."
+why_it_matters: "Privileged containers can escape isolation and access the host system, creating a critical security breach vector."
+applies_to:
+  - "kubernetes"
+rules:
+  - field: "securityContext.privileged"
+    allowed_values: [false]
+remediation: |
+  Remove privileged: true from your container securityContext:
+    securityContext:
+      privileged: false
+      runAsNonRoot: true

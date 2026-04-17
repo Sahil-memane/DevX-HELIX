@@ -1,0 +1,20 @@
+id: "POL-010"
+name: "Required Kubernetes annotations"
+category: "tagging"
+severity: "LOW"
+mode: "audit"
+description: "All Kubernetes resources should have team-contact and on-call annotations for incident response."
+why_it_matters: "Without contact annotations, incident responders cannot quickly identify the owning team during outages."
+applies_to:
+  - "kubernetes"
+rules:
+  - field: "annotations"
+    required_keys:
+      - "team-contact"
+      - "on-call"
+remediation: |
+  Add annotations to your resource metadata:
+    metadata:
+      annotations:
+        team-contact: "platform-team@company.com"
+        on-call: "https://pagerduty.com/team/platform"
