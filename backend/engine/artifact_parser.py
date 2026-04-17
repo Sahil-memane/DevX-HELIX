@@ -81,6 +81,7 @@ def parse_k8s_manifest(manifest_yaml: str) -> dict:
             "kind": kind,
             "name": metadata.get("name", ""),
             "labels": metadata.get("labels", {}),
+            "annotations": metadata.get("annotations", {}),
             "containers": containers,
             "replicas": spec.get("replicas", 1),
             "service_type": service_type,

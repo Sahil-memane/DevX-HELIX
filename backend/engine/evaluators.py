@@ -349,6 +349,51 @@ def eval_POL008(artifact, policy):
     return violations
 
 
+# -- POL-009: No Privileged Containers --
+def eval_POL009(artifact, policy):
+    """Check that containers do not run in privileged mode."""
+    violations = []
+    
+    if artifact["artifact_type"] == "kubernetes":
+        for res in artifact.get("resources", []):
+            for container in res.get("containers", []):
+                sec_ctx = container.get("securityContext", {})
+                if sec_ctx.get("privileged") is True:
+                    violations.append(Violation(
+                        policy_id=policy["id"],
+                        policy_name=policy["name"],
+                        severity=policy["severity"],
+                        mode=policy["mode"],
+                        resource=f"{res.get('name', 'unknown')}/{container.get('name', 'unknown')}",
+                        what_failed="Container is running in privileged mode",
+                        why_it_matters=policy["why_it_matters"],
+                        remediation=policy["remediation"],
+                    ))
+    return violations
+
+# -- POL-010: Required Kubernetes Annotations --
+def eval_POL010(artifact, policy):
+    """Check that Kubernetes resources have required annotations."""
+    violations = []
+    required_annotations = policy["rules"][0].get("required_keys", [])
+    
+    if artifact["artifact_type"] == "kubernetes":
+        for res in artifact.get("resources", []):
+            annotations = res.get("annotations", {})
+            missing = [a for a in required_annotations if a not in annotations]
+            if missing:
+                violations.append(Violation(
+                    policy_id=policy["id"],
+                    policy_name=policy["name"],
+                    severity=policy["severity"],
+                    mode=policy["mode"],
+                    resource=res.get("name", "unknown"),
+                    what_failed=f"Missing required annotations: {', '.join(missing)}",
+                    why_it_matters=policy["why_it_matters"],
+                    remediation=policy["remediation"],
+                ))
+    return violations
+
 EVALUATORS["POL-001"] = eval_POL001
 EVALUATORS["POL-002"] = eval_POL002
 EVALUATORS["POL-003"] = eval_POL003
@@ -357,3 +402,5 @@ EVALUATORS["POL-005"] = eval_POL005
 EVALUATORS["POL-006"] = eval_POL006
 EVALUATORS["POL-007"] = eval_POL007
 EVALUATORS["POL-008"] = eval_POL008
+EVALUATORS["POL-009"] = eval_POL009
+EVALUATORS["POL-010"] = eval_POL010

@@ -27,66 +27,98 @@ export interface DashboardMetrics {
   recentActivity: { time: string; evt: string; env: string; status: string }[];
 }
 
-const mockDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const API_BASE = "http://localhost:8080/api";
 
 export const mockApi = {
   getDashboardMetrics: async (): Promise<DashboardMetrics> => {
-    await mockDelay(1200);
-    return {
-      complianceScore: 84,
-      activePolicies: 142,
-      criticalViolations: 3,
-      scansToday: "8.4k",
-      pieData: [
-        { name: 'Compliant', value: 84 },
-        { name: 'Non-Compliant', value: 16 },
-      ],
-      barData: [
-        { name: 'S3', violations: 12 },
-        { name: 'IAM', violations: 19 },
-        { name: 'EC2', violations: 5 },
-        { name: 'RDS', violations: 8 },
-        { name: 'EKS', violations: 15 },
-      ],
-      lineData: [
-        { name: 'Mon', score: 75 },
-        { name: 'Tue', score: 78 },
-        { name: 'Wed', score: 76 },
-        { name: 'Thu', score: 81 },
-        { name: 'Fri', score: 80 },
-        { name: 'Sat', score: 84 },
-        { name: 'Sun', score: 84 },
-      ],
-      recentActivity: [
-        { time: "2m ago", evt: "IAM Policy Update", env: "Production", status: "Fail" },
-        { time: "15m ago", evt: "S3 Bucket Created", env: "Staging", status: "Pass" },
-        { time: "1h ago", evt: "Security Group Mod", env: "Production", status: "Fail" },
-        { time: "2h ago", evt: "RDS Instance Started", env: "Dev", status: "Pass" },
-      ]
-    };
+    try {
+      const [statsRes, policiesRes, auditRes] = await Promise.all([
+        fetch(`${API_BASE}/dashboard/stats`).then(r => r.json()),
+        fetch(`${API_BASE}/policies`).then(r => r.json()),
+        fetch(`${API_BASE}/audit`).then(r => r.json())
+      ]);
+
+      const complianceScore = statsRes.compliance_score || 0;
+      const activePolicies = policiesRes.length || 0;
+      
+      const criticalViolations = auditRes.filter((log: any) => 
+        log.violations && log.violations.some((v: any) => v.severity && v.severity.toUpperCase() === 'CRITICAL')
+      ).length || 0;
+
+      const pieData = [
+        { name: 'Compliant', value: complianceScore },
+        { name: 'Non-Compliant', value: 100 - complianceScore },
+      ];
+
+      const barData = (statsRes.top_violations || []).map((v: any) => ({
+        name: (v.issue || 'Unknown').substring(0, 15),
+        violations: v.count
+      }));
+
+      const recentActivity = (auditRes || []).slice(0, 5).map((log: any) => ({
+        time: new Date(log.timestamp).toLocaleTimeString(),
+        evt: log.artifact_type ? `Validated ${log.artifact_type}` : 'Validation',
+        env: log.environment || 'N/A',
+        status: log.status === 'PASSED' ? 'Pass' : 'Fail'
+      }));
+
+      const lineData = [
+        { name: 'Prev', score: Math.max(0, complianceScore - 2) },
+        { name: 'Now', score: complianceScore }
+      ];
+
+      return {
+        complianceScore,
+        activePolicies,
+        criticalViolations,
+        scansToday: `${statsRes.total_runs || 0}`,
+        pieData,
+        barData,
+        lineData,
+        recentActivity
+      };
+    } catch(e) {
+      console.error("Dashboard fetch error:", e);
+      return {
+        complianceScore: 0, activePolicies: 0, criticalViolations: 0, scansToday: "0",
+        pieData: [], barData: [], lineData: [], recentActivity: []
+      };
+    }
   },
   
   getPolicies: async (): Promise<Policy[]> => {
-    await mockDelay(1000);
-    return [
-      { id: "POL-001", name: "S3 buckets must not be public", category: "Storage", severity: "Critical", status: "Enforced", updated: "2d ago" },
-      { id: "POL-002", name: "IAM roles require MFA", category: "Identity", severity: "High", status: "Audit", updated: "1w ago" },
-      { id: "POL-003", name: "EC2 instances use IMDSv2", category: "Compute", severity: "Medium", status: "Enforced", updated: "3d ago" },
-      { id: "POL-004", name: "RDS storage is encrypted", category: "Database", severity: "High", status: "Audit", updated: "5h ago" },
-      { id: "POL-005", name: "VPC Flow Logs enabled", category: "Network", severity: "Low", status: "Enforced", updated: "1m ago" },
-      { id: "POL-006", name: "Root account access keys disabled", category: "Identity", severity: "Critical", status: "Enforced", updated: "2m ago" },
-    ];
+    try {
+      const res = await fetch(`${API_BASE}/policies`);
+      const data = await res.json();
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        severity: p.severity,
+        status: p.mode === "enforce" ? "Enforced" : "Audit",
+        updated: "Just now"
+      }));
+    } catch(e) {
+      console.error("Policy fetch error:", e);
+      return [];
+    }
   },
 
   getAuditLogs: async (): Promise<AuditLog[]> => {
-    await mockDelay(1500);
-    return Array.from({ length: 15 }).map((_, i) => ({
-      id: `run-90${i}x${Math.floor(Math.random() * 1000)}`,
-      resource: `arn:aws:s3:::prod-bucket-${i}`,
-      policy: i % 3 === 0 ? 'S3 buckets must not be public' : 'IAM roles require MFA',
-      user: i % 2 === 0 ? 'system:terraform' : 'developer@company.com',
-      status: (i % 4 === 0) ? 'FAIL' : 'PASS',
-      time: `${i}h ago`,
-    }));
+    try {
+      const res = await fetch(`${API_BASE}/audit`);
+      const data = await res.json();
+      return (data || []).map((log: any) => ({
+        id: log.run_id,
+        resource: log.artifact_type || 'Unknown',
+        policy: log.status,
+        user: log.team || 'Unknown',
+        status: log.status === 'PASSED' ? 'PASS' : 'FAIL',
+        time: new Date(log.timestamp).toLocaleString()
+      }));
+    } catch(e) {
+      console.error("Audit log fetch error:", e);
+      return [];
+    }
   }
 };
