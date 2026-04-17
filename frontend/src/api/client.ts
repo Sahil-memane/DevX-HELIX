@@ -4,7 +4,7 @@
  * Handles base URL, JSON serialization, error normalization, and timeouts.
  */
 
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8080" : "");
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 // ─── Normalised error ─────────────────────────────────────────────────────────
@@ -39,7 +39,8 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 function buildUrl(path: string, params?: Record<string, unknown>): string {
-  const url = new URL(path, BASE_URL);
+  const base = BASE_URL || window.location.origin;
+  const url = new URL(path, base);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== "") {
