@@ -1,1 +1,1 @@
-# routes package
+# Routes module

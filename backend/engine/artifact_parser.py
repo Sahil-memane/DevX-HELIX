@@ -144,8 +144,14 @@ def parse_dockerfile(content: str) -> dict:
 
     return {
         "artifact_type": "dockerfile",
-        "base_image": base_image,
-        "exposed_ports": exposed_ports,
-        "env_vars": env_vars,
-        "has_healthcheck": has_healthcheck,
+        "resources": [
+            {
+                "type": "dockerfile",
+                "name": "Dockerfile",
+                "base_image": base_image,
+                "exposed_ports": exposed_ports,
+                "env_vars": env_vars,
+                "has_healthcheck": has_healthcheck,
+            }
+        ]
     }

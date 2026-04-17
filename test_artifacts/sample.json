@@ -1,0 +1,26 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.5.0",
+  "resource_changes": [
+    {
+      "address": "aws_instance.web",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web",
+      "change": {
+        "actions": ["create"],
+        "after": {
+          "ami": "ami-12345678",
+          "instance_type": "t2.micro",
+          "tags": {
+            "team": "frontend"
+          },
+          "assign_public_ip": true,
+          "cpu": 2,
+          "memory": 1024,
+          "health_check": null
+        }
+      }
+    }
+  ]
+}

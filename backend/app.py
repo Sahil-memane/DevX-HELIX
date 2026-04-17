@@ -41,14 +41,14 @@ def health():
 
 # ── Import and register route blueprints ──
 # These will be created by Member A — uncomment as they become available:
-# from routes.validate import validate_bp
-# from routes.policies import policies_bp
-# from routes.audit import audit_bp
-# from routes.dashboard import dashboard_bp
-# app.register_blueprint(validate_bp)
-# app.register_blueprint(policies_bp)
-# app.register_blueprint(audit_bp)
-# app.register_blueprint(dashboard_bp)
+from routes.validate import validate_bp
+from routes.policies import policies_bp
+from routes.audit import audit_bp
+from routes.dashboard import dashboard_bp
+app.register_blueprint(validate_bp)
+app.register_blueprint(policies_bp)
+app.register_blueprint(audit_bp)
+app.register_blueprint(dashboard_bp)
 
 
 # ── Serve React Frontend (Static Files) ──
